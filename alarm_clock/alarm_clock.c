@@ -73,6 +73,8 @@ void fork_alarm(struct alarm a)
     sleep(seconds_to_alarm);
 
     printf("Ring ring.\n");
+    //Only works in Linux, not WSL unless PulseAudio is installed
+    execlp("mpg123", "mpg123", "-q", "./alarm.mp3", NULL);
 }
 
 void schedule()
@@ -105,9 +107,11 @@ void schedule()
 
     if (pid == 0)
     {
-        printf("%i", getpid());
         fork_alarm(new_alarm);
         exit(0);
+    }
+    else {
+        waitpid(getpid(), NULL, WNOHANG);
     }
 
     add_item(alarms, new_alarm, &num_alarms);
