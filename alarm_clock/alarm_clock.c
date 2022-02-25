@@ -16,7 +16,8 @@ struct alarm
     int id;
 };
 
-struct alarm alarms[10];
+const int max_alarms = 10;
+struct alarm alarms[max_alarms];
 int num_alarms = 0;
 
 void add_item(struct alarm *p, struct alarm a, int *num_items)
@@ -55,6 +56,10 @@ void print_alarm(struct tm a)
 
 void print_alarms()
 {
+    if (num_alarms == 0){
+        printf("\nNo alarms scheduled.\n");
+        return;
+    }
     for (int i = 0; i < num_alarms; i++)
     {
         printf("\nAlarm %i is scheduled at: ", i+1);
@@ -79,6 +84,11 @@ void fork_alarm(struct alarm a)
 
 void schedule()
 {
+    if (num_alarms == max_alarms){
+        printf("\nMaximum number of alarms reached.\n");
+        return;
+    }
+
     char time_string[20];
     printf("Schedule alarm at which date and time?:");
     scanf(" %19[^\n]", time_string);
@@ -93,7 +103,7 @@ void schedule()
 
     if (new_alarm_time < current_time)
     {
-        printf("New alarm must be after current time. \n");
+        printf("New alarm must be after current time.\n");
         return;
     }
 
@@ -120,19 +130,31 @@ void schedule()
 }
 
 void cancel(){
-    int cancel;
-    printf("Delete which alarm?: ");
-    scanf("%d", &cancel);
-    delete_item(alarms, &num_alarms, cancel-1, 1);
+    if (num_alarms == 0){
+        printf("\nNo alarms active.\n");
+        return;
+    }
+
+    int cancel_alarm;
+    printf("\nDelete which alarm?: ");
+    scanf("%d", &cancel_alarm);
+
+    if (cancel_alarm > num_alarms){
+        print("\nThis alarm does not exist.\n");
+        return;
+    }
+    delete_item(alarms, &num_alarms, cancel_alarm-1, 1);
 }
 
 void update_alarms(){
     time_t current_time;
     time(&current_time);
-    for (int i = num_alarms-1; i >= 0; i--){
-        if(alarms[i].alarm_time < current_time){
-            // waitpid(alarms[i].pid, 0, 0);
-            delete_item(alarms, &num_alarms, i, 0);
+    int k;
+    for (int i = num_alarms-1; i >= 0; i--) {
+        if (waitpid(alarms[i].pid, &k, WNOHANG)){
+            if (WIFEXITED(k)){
+                delete_item(alarms, &num_alarms, i, 0);
+            }
         }
     }
 }
