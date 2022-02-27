@@ -19,9 +19,10 @@ Expected result: Print "Ring ring" and play alarm sound
 3. Input a date after current time
 4. Press 'l' to list all current alarms
 Expected result: Print the single inputted alarm
-5. Input another date after current time
-6. Press 'l' to list all current alarms
-Expected result: List both alarms
+5. Press 's' to schedule an alarm
+6. Input another date after current time
+7. Press 'l' to list all current alarms
+Expected result: List both alarms if not one alarm has rung already
 
 ## Test case 3 - Alarm list overflow and deletion
 
