@@ -5,11 +5,18 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#define SIZE 1024
+#define MAXREQ (4096 * 1024)
+
+char buffer[MAXREQ], body[MAXREQ], msg[MAXREQ];
+
 typedef struct
 {
     char method[10];
     char path[30];
 } FirstLine;
+
+char body[4096 * 1024];
 
 int parseRequest(char request[], FirstLine *fl)
 {
@@ -57,10 +64,10 @@ int main(void)
 {
     int socket_desc, client_sock, client_size;
     struct sockaddr_in server_addr, client_addr;
-    char server_message[2000], client_message[2000];
+    char client_message[2000];
 
     // Clean buffers:
-    memset(server_message, '\0', sizeof(server_message));
+    memset(msg, '\0', sizeof(msg));
     memset(client_message, '\0', sizeof(client_message));
 
     // Create socket:
@@ -113,26 +120,57 @@ int main(void)
     }
     printf("Msg from client: %s\n", client_message);
 
+
+
     FirstLine firstLine;
 
     if (parseRequest(client_message, &firstLine) == 1)
     {
         FILE *f;
+
         f = fopen(firstLine.path, "r");
+
+        // size_t len;
+        // ssize_t bytes_read = getdelim(&buffer, &len, '\0', f);
+
         if (f == NULL)
         {
             perror("[-]Error in reading file.");
             exit(1);
         }
-        fscanf(f,"%s",server_message);
-        write(socket_desc, server_message, 100);
+
+        // while (fgets(buffer, 100, f) != NULL){
+        //     printf("%s\n", buffer);
+        //     strcat(fbuffer, buffer);
+        //     // write(client_sock, buffer, sizeof(buffer));
+        // }
+
+        read(f, body, sizeof(body));
+
+        snprintf(msg, sizeof(msg),
+                     "HTTP/1.0 200 OK\n"
+                     "Content-Type: text/html\n"
+                     "Content-Length: %lu\n\n%s",
+                     strlen(body), body);
+        
+        int n = write(client_sock, msg, strlen(msg));
+
+        // strcpy(body, buffer);
+        // snprintf(server_message, sizeof(server_message),
+        //     "HTTP/0.9 200 OK\n"
+        //     ""
+        //     "",
+        //     strlen(body), body
+        // );
+
+        fclose(f);
     }
     else
     {
-        strcpy(server_message, "Error 400");
+        strcpy(msg, "Error 400");
     }
 
-    if (send(client_sock, server_message, strlen(server_message), 0) < 0)
+    if (send(client_sock, msg, strlen(msg), 0) < 0)
     {
         printf("Can't send\n");
         return -1;

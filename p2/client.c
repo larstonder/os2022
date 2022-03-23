@@ -52,7 +52,7 @@ int main(void)
         return -1;
     }
     
-    printf("Server's response: %s\n",server_message);
+    printf("Server's response: %s\n", server_message);
     
     // Close the socket:
     close(socket_desc);
