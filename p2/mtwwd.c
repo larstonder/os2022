@@ -29,39 +29,32 @@ int parseRequest(char request[], FirstLine *fl)
     strcpy(path, token);
     path[strcspn(path, "\n")] = 0;
 
+    printf("%s", path);
+
     if (strcmp(method, "GET") == 0)
     {
         printf("greater success\n");
         strcpy(fl->method, method);
-
-        char dots[] = ".";
-        strcat(dots, path);
-        printf("%s\n", dots);
-
-        strcpy(fl->path, dots);
+        strcpy(fl->path, path);
         return 1;
     }
     return 0;
 }
 
-void send_file(FILE *fp, int sockfd)
+int main(int argc, char *argv[])
 {
-    int n;
-    char data[2000] = {0};
+    char *www_path = argv[1];
+    int port = (int) strtol(argv[2], (char **)NULL, 10);
+    int n_threads = (int) strtol(argv[3], (char **)NULL, 10);
+    int bufferslots = (int) strtol(argv[4], (char **)NULL, 10);
 
-    while (fgets(data, 2000, fp) != NULL)
-    {
-        if (send(sockfd, data, sizeof(data), 0) == -1)
-        {
-            perror("[-]Error in sending file.");
-            exit(1);
-        }
-        bzero(data, 2000);
-    }
-}
+    printf("path: %s\n", www_path);
+    printf("port: %d\n", port);
+    printf("threads: %d\n", n_threads);
+    printf("bufferslots: %d\n", bufferslots);
 
-int main(void)
-{
+    pthread_t threadpool[n_threads];
+
     int socket_desc, client_sock, client_size;
     struct sockaddr_in server_addr, client_addr;
     char client_message[2000];
@@ -78,7 +71,7 @@ int main(void)
 
     // Set port and IP:
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(2000);
+    server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     // Bind to the set port and IP:
@@ -127,7 +120,14 @@ int main(void)
         if (parseRequest(client_message, &firstLine) == 1)
         {
             char source[SIZE + 1];
-            FILE *fp = fopen(firstLine.path, "r");
+            char finalPath[] = ".";
+            printf("%s", finalPath);
+
+            strcat(finalPath, www_path);
+            strcat(finalPath, firstLine.path);
+
+            printf("%s", finalPath);
+            FILE *fp = fopen(finalPath, "r");
             if (fp != NULL) {
                 size_t newLen = fread(source, sizeof(char), SIZE, fp);
                 if ( ferror( fp ) != 0 ) {
