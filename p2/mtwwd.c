@@ -4,11 +4,12 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include "bbuffer/bbuffer.h"
 
 #define SIZE 1024
 #define MAXREQ (4096 * 1024)
 
-char buffer[MAXREQ], body[MAXREQ], msg[MAXREQ];
+body[MAXREQ], msg[MAXREQ];
 
 typedef struct
 {
@@ -41,6 +42,16 @@ int parseRequest(char request[], FirstLine *fl)
     return 0;
 }
 
+void init_threadpool(int n_threads, pthread_t *threadpool, void *thread_function){
+    for (int i = 0; i < n_threads; i++){
+        pthread_create(threadpool[i], NULL, thread_function, NULL);
+    }
+}
+
+void process_request(){
+    
+}
+
 int main(int argc, char *argv[])
 {
     char *www_path = argv[1];
@@ -48,10 +59,7 @@ int main(int argc, char *argv[])
     int n_threads = (int) strtol(argv[3], (char **)NULL, 10);
     int bufferslots = (int) strtol(argv[4], (char **)NULL, 10);
 
-    printf("path: %s\n", www_path);
-    printf("port: %d\n", port);
-    printf("threads: %d\n", n_threads);
-    printf("bufferslots: %d\n", bufferslots);
+    BNDBUF *buffer = bb_init(bufferslots);
 
     pthread_t threadpool[n_threads];
 
@@ -83,7 +91,6 @@ int main(int argc, char *argv[])
     printf("Done with binding\n");
 
     while(1){
-
         // Clean buffers:
         memset(msg, '\0', sizeof(msg));
         memset(client_message, '\0', sizeof(client_message));
@@ -113,7 +120,8 @@ int main(int argc, char *argv[])
             printf("Couldn't receive\n");
             return -1;
         }
-        printf("Msg from client: %s\n", client_message);
+        // printf("Msg from client: %s\n", client_message);
+        bb_add(buffer, client_message);
 
         FirstLine firstLine;
 
