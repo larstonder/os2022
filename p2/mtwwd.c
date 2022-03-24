@@ -70,115 +70,98 @@ int main(void)
     memset(msg, '\0', sizeof(msg));
     memset(client_message, '\0', sizeof(client_message));
 
-    // Create socket:
-    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    while(1){
+        // Create socket:
+        socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (socket_desc < 0)
-    {
-        printf("Error while creating socket\n");
-        return -1;
-    }
-    printf("Socket created successfully\n");
-
-    // Set port and IP:
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(2000);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-    // Bind to the set port and IP:
-    if (bind(socket_desc, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {
-        printf("Couldn't bind to the port\n");
-        return -1;
-    }
-    printf("Done with binding\n");
-
-    // Listen for clients:
-    if (listen(socket_desc, 1) < 0)
-    {
-        printf("Error while listening\n");
-        return -1;
-    }
-    printf("\nListening for incoming connections.....\n");
-
-    // Accept an incoming connection:
-    client_size = sizeof(client_addr);
-    client_sock = accept(socket_desc, (struct sockaddr *)&client_addr, &client_size);
-
-    if (client_sock < 0)
-    {
-        printf("Can't accept\n");
-        return -1;
-    }
-    printf("Client connected at IP: %s and port: %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-    // Receive client's message:
-    if (recv(client_sock, client_message, sizeof(client_message), 0) < 0)
-    {
-        printf("Couldn't receive\n");
-        return -1;
-    }
-    printf("Msg from client: %s\n", client_message);
-
-
-
-    FirstLine firstLine;
-
-    if (parseRequest(client_message, &firstLine) == 1)
-    {
-        FILE *f;
-
-        f = fopen(firstLine.path, "r");
-
-        // size_t len;
-        // ssize_t bytes_read = getdelim(&buffer, &len, '\0', f);
-
-        if (f == NULL)
+        if (socket_desc < 0)
         {
-            perror("[-]Error in reading file.");
-            exit(1);
+            printf("Error while creating socket\n");
+            return -1;
+        }
+        printf("Socket created successfully\n");
+
+        // Set port and IP:
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(2000);
+        server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+        // Bind to the set port and IP:
+        if (bind(socket_desc, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+        {
+            printf("Couldn't bind to the port\n");
+            return -1;
+        }
+        printf("Done with binding\n");
+
+        // Listen for clients:
+        if (listen(socket_desc, 1) < 0)
+        {
+            printf("Error while listening\n");
+            return -1;
+        }
+        printf("\nListening for incoming connections.....\n");
+        
+
+        // Accept an incoming connection:
+        client_size = sizeof(client_addr);
+        client_sock = accept(socket_desc, (struct sockaddr *)&client_addr, &client_size);
+
+        if (client_sock < 0)
+        {
+            printf("Can't accept\n");
+            return -1;
+        }
+        printf("Client connected at IP: %s and port: %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        // Receive client's message:
+        if (recv(client_sock, client_message, sizeof(client_message), 0) < 0)
+        {
+            printf("Couldn't receive\n");
+            return -1;
+        }
+        printf("Msg from client: %s\n", client_message);
+
+        FirstLine firstLine;
+
+        if (parseRequest(client_message, &firstLine) == 1)
+        {
+            char source[SIZE + 1];
+            FILE *fp = fopen(firstLine.path, "r");
+            if (fp != NULL) {
+                size_t newLen = fread(source, sizeof(char), SIZE, fp);
+                if ( ferror( fp ) != 0 ) {
+                    fputs("Error reading file", stderr);
+                } else {
+                    source[newLen++] = '\0'; /* Just to be safe. */
+                }
+
+                fclose(fp);
+            }
+
+            snprintf(msg, sizeof(msg),
+                "HTTP/1.0 200 OK\n"
+                "Content-Type: text/html\n"
+                "Content-Length: %ld\n\n%s",
+                strlen(source), source);
+
+            int n = write(client_sock, msg, strlen(msg));
+        }
+        else
+        {
+            strcpy(msg, "Error 400");
         }
 
-        // while (fgets(buffer, 100, f) != NULL){
-        //     printf("%s\n", buffer);
-        //     strcat(fbuffer, buffer);
-        //     // write(client_sock, buffer, sizeof(buffer));
-        // }
+        if (send(client_sock, msg, strlen(msg), 0) < 0)
+        {
+            printf("Can't send\n");
+            return -1;
+        }
 
-        read(f, body, sizeof(body));
-
-        snprintf(msg, sizeof(msg),
-                     "HTTP/1.0 200 OK\n"
-                     "Content-Type: text/html\n"
-                     "Content-Length: %lu\n\n%s",
-                     strlen(body), body);
-        
-        int n = write(client_sock, msg, strlen(msg));
-
-        // strcpy(body, buffer);
-        // snprintf(server_message, sizeof(server_message),
-        //     "HTTP/0.9 200 OK\n"
-        //     ""
-        //     "",
-        //     strlen(body), body
-        // );
-
-        fclose(f);
+        // Closing the socket:
+        close(client_sock);
+        close(socket_desc);
     }
-    else
-    {
-        strcpy(msg, "Error 400");
-    }
-
-    if (send(client_sock, msg, strlen(msg), 0) < 0)
-    {
-        printf("Can't send\n");
-        return -1;
-    }
-
-    // Closing the socket:
-    close(client_sock);
-    close(socket_desc);
 
     return 0;
 }
