@@ -65,34 +65,35 @@ int main(void)
     int socket_desc, client_sock, client_size;
     struct sockaddr_in server_addr, client_addr;
     char client_message[2000];
+    
+    // Create socket:
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 
-    // Clean buffers:
-    memset(msg, '\0', sizeof(msg));
-    memset(client_message, '\0', sizeof(client_message));
+    if (socket_desc < 0)
+    {
+        printf("Error while creating socket\n");
+        return -1;
+    }
+    printf("Socket created successfully\n");
+
+    // Set port and IP:
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(2000);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // Bind to the set port and IP:
+    if (bind(socket_desc, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        printf("Couldn't bind to the port\n");
+        return -1;
+    }
+    printf("Done with binding\n");
 
     while(1){
-        // Create socket:
-        socket_desc = socket(AF_INET, SOCK_STREAM, 0);
 
-        if (socket_desc < 0)
-        {
-            printf("Error while creating socket\n");
-            return -1;
-        }
-        printf("Socket created successfully\n");
-
-        // Set port and IP:
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(2000);
-        server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-        // Bind to the set port and IP:
-        if (bind(socket_desc, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-        {
-            printf("Couldn't bind to the port\n");
-            return -1;
-        }
-        printf("Done with binding\n");
+        // Clean buffers:
+        memset(msg, '\0', sizeof(msg));
+        memset(client_message, '\0', sizeof(client_message));
 
         // Listen for clients:
         if (listen(socket_desc, 1) < 0)
@@ -102,7 +103,6 @@ int main(void)
         }
         printf("\nListening for incoming connections.....\n");
         
-
         // Accept an incoming connection:
         client_size = sizeof(client_addr);
         client_sock = accept(socket_desc, (struct sockaddr *)&client_addr, &client_size);
@@ -160,8 +160,9 @@ int main(void)
 
         // Closing the socket:
         close(client_sock);
-        close(socket_desc);
     }
+
+    close(socket_desc);
 
     return 0;
 }
