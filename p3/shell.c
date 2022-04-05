@@ -8,15 +8,30 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-void type_prompt(); //TODO: Define function
-void read_command(char *command, char **arguments); //TODO: Define function
+void type_prompt();
+void read_command(char *command, char **arguments, int *num_args);
+void execute_command(char *command, char **arguments, int *num_args);
 
 void shell_loop() {
     char cmnd[100], command[1000], *arguments[20];
+    int num_args = 0;
     while(1) {
         type_prompt();
-        read_command(command, arguments);
+        read_command(command, arguments, &num_args);
+        
+        pid_t pid = fork();
+
+        if (pid == 0) {
+            execute_command(command, arguments, &num_args);
+            exit(0);
+        }
+        else {
+            waitpid(getpid(), NULL, WNOHANG);
+        }
+
         if(strcmp(command, "exit") == 0) break;
     }
 }
@@ -30,9 +45,8 @@ void type_prompt() {
     }
 }
 
-void read_command(char *command, char **arguments) {
+void read_command(char *command, char **arguments, int *num_args) {
     char input[100];
-    int i = 0;
     scanf(" %100[^\n]", input);
 
     char *token = strtok(input, " \t");
@@ -41,12 +55,18 @@ void read_command(char *command, char **arguments) {
     while (token != NULL){
         token = strtok(NULL, " \t");
         
-        arguments[i++] = token;
+        arguments[(*num_args)++] = token;
     }
 
-    for (int j = 0; j < i-1; j++){
-        printf("%s\n", arguments[j]);
+    (*num_args)--;
+}
+
+void execute_command(char *command, char **arguments, int *num_args){
+    printf("Exit status [%s",command);
+    for (int i = 0; i < *num_args; i++){
+        printf(" %s", arguments[i]);
     }
+    printf("] = 0\n");
 }
 
 int main(int argc, char **argv) {
