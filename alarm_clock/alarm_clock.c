@@ -17,7 +17,7 @@ struct alarm
 };
 
 const int max_alarms = 10;
-struct alarm alarms[max_alarms];
+struct alarm alarms[10];
 int num_alarms = 0;
 
 void add_item(struct alarm *p, struct alarm a, int *num_items)
@@ -140,7 +140,7 @@ void cancel(){
     scanf("%d", &cancel_alarm);
 
     if (cancel_alarm > num_alarms){
-        print("\nThis alarm does not exist.\n");
+        printf("\nThis alarm does not exist.\n");
         return;
     }
     delete_item(alarms, &num_alarms, cancel_alarm-1, 1);
