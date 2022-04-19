@@ -22,10 +22,11 @@ void type_prompt();
 void read_command(char *command, char **arguments, int *num_args, int *is_background);
 void execute_command(char *command, char **arguments, int *num_args, int exit_status);
 void redirect_io(char *command, char **arguments, int *num_args);
-void add_to_list(struct Node *element);
+void add_to_list(char* command, int pid);
 void remove_from_list(int pid);
 void kill_zombies();
 void print_jobs();
+int zombie_stat(int pid);
 void cd(char *path);
 
 struct Node tail;
@@ -51,10 +52,7 @@ void shell_loop() {
             exit(0);
         }
         else if (is_background == 1) {
-            Node new_node;
-            new_node.data = pid;
-            strcpy(new_node.command, command);
-            add_to_list(&new_node);
+            add_to_list(command, pid);
             waitpid(getpid(), &exit_status, WNOHANG);
         }
         else {
@@ -162,18 +160,27 @@ void redirect_io(char *command, char **arguments, int *num_args) {
     }
 }
 
-void add_to_list(struct Node *element) {
-    element->next = head.next;
-    head.next = element;
+void add_to_list(char* command, int pid) {
+    Node *new_node = malloc(sizeof(Node));
+    new_node->data = pid;
+    // new_node->command = command;
+    new_node->command = malloc(sizeof(command));
+    strcpy(new_node->command, command);
+    new_node->next = head.next;
+
+    // element->next = head.next;
+
+    head.next = new_node;
     return;
 }
 
 void remove_from_list(int pid) {
-    struct Node current = head;
-    while(current.next != NULL){
-        struct Node next = *current.next;
-        if (next.data == pid){
-            current.next = next.next;
+    struct Node *current = head.next;
+    while(current->next != NULL){
+        struct Node *next = current->next;
+        if (next->data == pid){
+            current->next = next->next;
+            free(next);
         }
         else {
             current = next;
@@ -182,12 +189,37 @@ void remove_from_list(int pid) {
 }
 
 void kill_zombies() {
-    int k;
-    int i = waitpid(-1, &k, WNOHANG);
-    if (WIFEXITED(k)){
-        remove_from_list(i);
-        kill_zombies();
+    struct Node *current = &head;
+    while(current->next != NULL){
+        struct Node *next = current->next;
+        int k = zombie_stat(next->data);
+        if (k != -1 && next->data != -2){
+            current->next = next->next;
+            free(next);
+        }
+        else {
+            current = next;
+        }
     }
+
+    // int k;
+    // int i = waitpid(-1, &k, WNOHANG);
+    // if (WIFEXITED(k)){
+    //     remove_from_list(i);
+    //     kill_zombies();
+    // }
+}
+
+int zombie_stat(int pid) {
+    int k;
+    if (waitpid(pid, &k, WNOHANG))
+    {
+        if (WIFEXITED(k))
+        {
+            return WEXITSTATUS(k);
+        }
+    }
+    return -1;
 }
 
 void print_jobs() {
