@@ -12,53 +12,59 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-struct Node {
+typedef struct Node {
     int data;
     char* command;
     struct Node* next;
-};
+} Node;
 
 void type_prompt();
 void read_command(char *command, char **arguments, int *num_args, int *is_background);
-void execute_command(char *command, char **arguments, int *num_args);
+void execute_command(char *command, char **arguments, int *num_args, int exit_status);
 void redirect_io(char *command, char **arguments, int *num_args);
 void add_to_list(struct Node *element);
 void remove_from_list(int pid);
 void kill_zombies();
+void print_jobs();
 void cd(char *path);
 
 struct Node tail;
 struct Node head;
 
 void shell_loop() {
-    char cmnd[100], command[1000], *arguments[20];
 
     while(1) {
         int num_args = 0;
-        int is_background;
+        int is_background = 0;
+        char command[1000], *arguments[20];
 
         kill_zombies();
         type_prompt();
         read_command(command, arguments, &num_args, &is_background);
-        
+
         pid_t pid = fork();
 
+        int exit_status = 0;
+
         if (pid == 0) {
-            execute_command(command, arguments, &num_args);
+            execute_command(command, arguments, &num_args, exit_status);
             exit(0);
         }
         else if (is_background == 1) {
-            struct Node new_node;
+            Node new_node;
             new_node.data = pid;
-            new_node.command = command;
+            strcpy(new_node.command, command);
             add_to_list(&new_node);
-            waitpid(getpid(), NULL, WNOHANG);
+            waitpid(getpid(), &exit_status, WNOHANG);
         }
         else {
-            wait(NULL);
+            wait(&exit_status);
         }
 
-        if(strcmp(command, "exit") == 0) break;
+        if(strcmp(command, "exit") == 0) {
+            printf("\n");
+            break;
+        }
     }
 }
 
@@ -97,12 +103,16 @@ void read_command(char *command, char **arguments, int *num_args, int *is_backgr
 
     int cmp = strcmp("cd", command);
     if (cmp == 0) {cd(arguments[0]);}
+
+    int cmpjobs = strcmp("jobs", command);
+    if (cmpjobs == 0) {print_jobs();}
 }
 
-void execute_command(char *command, char **arguments, int *num_args){
+void execute_command(char *command, char **arguments, int *num_args, int exit_status) {
     int cmpcd = strcmp("cd", command);
+    int cmpjobs = strcmp("jobs", command);
 
-    if (cmpcd != 0) {
+    if (cmpcd != 0 || cmpjobs != 0) {
         redirect_io(command, arguments, num_args);
     }
 
@@ -127,15 +137,15 @@ void execute_command(char *command, char **arguments, int *num_args){
     for (int i = 0; i < *num_args; i++){
         printf(" %s", arguments[i]);
     }
-    printf("] = 0\n");
+    printf("] = %d\n", exit_status);
 }
 
-void cd(char *path){
-    printf("%s\n", path);
+void cd(char *path) {
+    // printf("%s\n", path);
     if (chdir(path) != 0) perror("Could not change path");
 }
 
-void redirect_io(char *command, char **arguments, int *num_args){
+void redirect_io(char *command, char **arguments, int *num_args) {
     for (int i = *num_args-1; i >= 0; i--){
         int cmpin = strcmp(arguments[i], "<");
         int cmpout = strcmp(arguments[i], ">");
@@ -152,16 +162,15 @@ void redirect_io(char *command, char **arguments, int *num_args){
     }
 }
 
-void add_to_list(struct Node *element){
+void add_to_list(struct Node *element) {
     element->next = head.next;
     head.next = element;
     return;
 }
 
-void remove_from_list(int pid){
+void remove_from_list(int pid) {
     struct Node current = head;
     while(current.next != NULL){
-        printf("Hello\n");
         struct Node next = *current.next;
         if (next.data == pid){
             current.next = next.next;
@@ -169,16 +178,23 @@ void remove_from_list(int pid){
         else {
             current = next;
         }
-        
     }
 }
 
-void kill_zombies(){
+void kill_zombies() {
     int k;
     int i = waitpid(-1, &k, WNOHANG);
     if (WIFEXITED(k)){
         remove_from_list(i);
         kill_zombies();
+    }
+}
+
+void print_jobs() {
+    struct Node current = head;
+    while(current.next != NULL){
+        printf("Command: %s, PID: %d\n", current.command, current.data);
+        current = *current.next;
     }
 }
 
