@@ -163,51 +163,26 @@ void redirect_io(char *command, char **arguments, int *num_args) {
 void add_to_list(char* command, int pid) {
     Node *new_node = malloc(sizeof(Node));
     new_node->data = pid;
-    // new_node->command = command;
     new_node->command = malloc(sizeof(command));
     strcpy(new_node->command, command);
     new_node->next = head.next;
-
-    // element->next = head.next;
-
     head.next = new_node;
     return;
-}
-
-void remove_from_list(int pid) {
-    struct Node *current = head.next;
-    while(current->next != NULL){
-        struct Node *next = current->next;
-        if (next->data == pid){
-            current->next = next->next;
-            free(next);
-        }
-        else {
-            current = next;
-        }
-    }
 }
 
 void kill_zombies() {
     struct Node *current = &head;
     while(current->next != NULL){
         struct Node *next = current->next;
-        int k = zombie_stat(next->data);
-        if (k != -1 && next->data != -2){
-            current->next = next->next;
-            free(next);
+        if (next->data != -2){
+            int k = zombie_stat(next->data);
+            if (k != -1){
+                current->next = next->next;
+                free(next);
+            }
         }
-        else {
-            current = next;
-        }
+        current = next;
     }
-
-    // int k;
-    // int i = waitpid(-1, &k, WNOHANG);
-    // if (WIFEXITED(k)){
-    //     remove_from_list(i);
-    //     kill_zombies();
-    // }
 }
 
 int zombie_stat(int pid) {
